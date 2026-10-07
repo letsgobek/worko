@@ -326,8 +326,14 @@ async function dbLoadOrders(){
  var all=(r.data||[]).map(dbMap);
  // активная смена — всё, что не закрыто, плюс последние закрытые
  var live=all.filter(function(o){return o.status!=="closed";});
- var recent=all.filter(function(o){return o.status==="closed";}).slice(0,12);
- S.orders=live.concat(recent);
+ var closed=all.filter(function(o){return o.status==="closed";});
+ var mine=[],others=[];
+ var myName=S.me||ME;
+ for(var ci=0;ci<closed.length;ci++){
+  if(closed[ci].worker===myName){if(mine.length<40)mine.push(closed[ci]);}
+  else if(others.length<12)others.push(closed[ci]);
+ }
+ S.orders=live.concat(mine).concat(others);
  if(all.length)S.nextNum=Math.max(S.nextNum||0,all[0].num+1);
  // история для аналитики
  S.hist=all.filter(function(o){return o.status==="closed";}).map(function(o){
@@ -417,11 +423,18 @@ async function dbPatch(o,fields,action,comment){
   if(action)await dbEvent(o,action,comment);
  }catch(e){qPush({t:"patch",id:o.dbid,fields:fields});}
 }
+var _reloadT=null;
+function dbReloadSoon(){
+ if(_reloadT)clearTimeout(_reloadT);
+ _reloadT=setTimeout(function(){
+  dbLoadOrders().then(function(){render();}).catch(function(){});
+ },700);
+}
 function dbSubscribe(){
  try{
   DB.channel("worko-orders")
    .on("postgres_changes",{event:"*",schema:"public",table:"orders"},function(){
-     dbLoadOrders().then(function(){render();}).catch(function(){});
+     dbReloadSoon();
    })
    .subscribe();
  }catch(e){}
@@ -430,7 +443,7 @@ var ACC={worker:{name:ME,tab:"4417",pin:"1234",spec:"Электрик, 4 раз�
          master:{name:MASTER,tab:"1102",pin:"5678",spec:"Мастер смены · участок обогащения"}};
 
 var S={lang:"ru",theme:"system",role:null,view:"home",cur:null,filter:"all",site:"all",sort:"due",
- push:true,orders:null,nextNum:153,toast:null,avatar:null,verified:false,notifOk:false,doc:null,cat:"new",equip:null,pauseOther:false,eqOther:false,hist:[],mscore:null,chat:[],pendingRole:null,pin:"",pinErr:false,loginId:"",loginErr:false,pinOk:false,remember:true};
+ push:true,orders:null,nextNum:153,toast:null,avatar:null,verified:false,notifOk:false,doc:null,cat:"new",equip:null,pauseOther:false,eqOther:false,hist:[],mscore:null,chat:[],pendingRole:null,pin:"",pinErr:false,loginId:"",loginErr:false,pinOk:false,remember:true,busy:false};
 
 function nowMs(){return Date.now();}
 function mk(num,eq,site,prob,prio,worker,dueMin,status){
@@ -1871,13 +1884,20 @@ document.addEventListener("click",function(e){
  if(a==="pinhint"){toast((S.lang==="en"?"Demo PIN: ":S.lang==="kk"?"Демо ПИН: ":"Демо-ПИН: ")+ACC[S.pendingRole].pin);return;}
  if(a==="pindel"){S.pin=(S.pin||"").slice(0,-1);S.pinErr=false;render();return;}
  if(a==="pin"){
+  if(S.busy)return;
   if(S.pinErr){S.pin="";S.pinErr=false;}
+  if((S.pin||"").length>=4)return;
   S.pin=(S.pin||"")+v;
   if(S.pin.length>=4){
+   if(S.busy)return;
    if(ONLINE){
+    S.busy=true;
+    var dm=document.getElementById("pinmsg");
+    if(dm){dm.textContent=(S.lang==="en"?"Checking…":S.lang==="kk"?"Тексерілуде…":"Проверяем…");dm.style.color="var(--muted)";}
     var pinv=S.pin, emp2=S.loginEmp;
     DB.auth.signInWithPassword({email:emp2.staff_no+"@worko.kz",password:"worko"+pinv})
      .then(function(res){
+      S.busy=false;
       if(res.error){S.pin="";S.pinErr=true;paintPin();
        if(navigator.vibrate)try{navigator.vibrate(180);}catch(e3){}return;}
       S.pinOk=true;paintPin();
@@ -1890,6 +1910,9 @@ document.addEventListener("click",function(e){
         dbSubscribe();
        }).catch(function(){render();});
       },420);
+     },function(){
+      S.busy=false;S.pin="";S.pinErr=true;paintPin();
+      toast(S.lang==="en"?"Connection problem, try again":S.lang==="kk"?"Байланыс қатесі, қайталаңыз":"Проблема со связью, попробуйте ещё раз");
      });
     return;}
    var ok=(S.pin===ACC[S.pendingRole].pin);
@@ -1925,7 +1948,7 @@ document.addEventListener("click",function(e){
   S.view="order";
   toast((S.lang==="en"?"Reassigned to ":S.lang==="kk"?"Қайта тағайындалды: ":"Переназначено: ")+v);return;}
  if(a==="mclose"){o=get(v);o.status="closed";logPush(o,"closed","");save();
-  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");S.view="home";
+  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";
   toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
  if(a==="mscore"){S.cur=v;S.view="score";render();return;}
  if(a==="setscore"){o=get(S.cur);if(o.verdict){o.verdict.score=parseInt(v,10);o.verdict.byMaster=true;}
@@ -1991,7 +2014,7 @@ document.addEventListener("click",function(e){
   aiVerdictRemote(o).then(function(vd){fin(vd||aiVerdict(o));},function(){fin(aiVerdict(o));});
   return;}
  if(a==="closeorder"){o=get(v);o.status="closed";logPush(o,"closed","");save();
-  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");S.view="home";toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
+  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
  if(a==="eqother"){S.eqOther=!S.eqOther;render();return;}
  if(a==="prio"){tmpPrio=v;var b=document.querySelectorAll("#segprio button");for(var i=0;i<b.length;i++)b[i].className=(b[i].getAttribute("data-v")===v?"on":"");return;}
  if(a==="due"){tmpDue=parseInt(v,10);var d=document.querySelectorAll("#segdue button");for(var j=0;j<d.length;j++)d[j].className=(d[j].getAttribute("data-v")===v?"on":"");return;}
