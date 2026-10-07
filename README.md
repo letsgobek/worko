@@ -3,7 +3,7 @@
 Решение **кейса №1** республиканского хакатона **Qostanai AI Industry Hackathon 2026**
 Организатор кейса: АО «Костанайские минералы»
 
-**Демо:** https://ВАШ-ЛОГИН.github.io/worko/
+**Демо:** https://letsgobek.github.io/worko/
 **Демо-доступ:** исполнитель — табельный `4417`, ПИН `1234` · мастер — табельный `1102`, ПИН `5678`
 
 ---
@@ -87,7 +87,7 @@ Worko переводит весь цикл наряда в телефон и п�
 ### Быстро, без сервера
 
 ```bash
-git clone https://github.com/ВАШ-ЛОГИН/worko.git
+git clone https://github.com/letsgobek/worko.git
 cd worko
 python3 -m http.server 8080
 ```
@@ -97,15 +97,30 @@ python3 -m http.server 8080
 ### С базой данных
 
 1. Создать проект на [supabase.com](https://supabase.com)
-2. SQL Editor → выполнить `db/schema.sql`, затем `db/seed.sql`
-3. Storage → создать приватный бакет `order-photos`
-4. Скопировать `config.example.js` в `config.js` и подставить URL и anon-ключ проекта
-5. Запустить любой статический сервер из корня репозитория
+2. SQL Editor → выполнить по порядку: `db/schema.sql`, `db/seed.sql`, `db/storage.sql`, `db/rls.sql`
+3. Authentication → Users → создать пользователей вида `<табельный>@worko.kz` с паролем `worko<ПИН>`
+4. SQL Editor → выполнить `db/auth.sql` — свяжет пользователей с сотрудниками
+5. Скопировать `config.example.js` в `config.js`, подставить Project URL и anon-ключ
+6. Запустить любой статический сервер из корня репозитория
+
+### ИИ-проверка через Claude
+
+Ключ Anthropic хранится в секретах Supabase и в браузер не попадает.
+
+```bash
+npm i -g supabase
+supabase login
+supabase link --project-ref <ref проекта>
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase functions deploy ai-review --no-verify-jwt
+```
+
+Если функция не задеплоена, приложение считает вердикт по встроенным правилам — цикл наряда работает в любом случае.
 
 ### Публикация
 
 GitHub Pages: Settings → Pages → Source: ветка `main`, папка `/root`.
-Сайт откроется по адресу `https://ВАШ-ЛОГИН.github.io/worko/`.
+Сайт откроется по адресу `https://letsgobek.github.io/worko/`.
 
 ### Сборка APK
 
@@ -121,9 +136,14 @@ worko/
 ├── sw.js                service worker: офлайн и push
 ├── config.example.js    шаблон подключения к Supabase
 ├── icons/               иконки приложения
-└── db/
-    ├── schema.sql       таблицы, связи, права доступа
-    └── seed.sql         справочники, сотрудники, 500+ нарядов за 90 дней
+├── db/
+│   ├── schema.sql       таблицы и связи
+│   ├── seed.sql         справочники, сотрудники, 500+ нарядов за 90 дней
+│   ├── auth.sql         связка пользователей Supabase Auth с сотрудниками
+│   ├── storage.sql      бакет и права на фото
+│   └── rls.sql          разграничение доступа по ролям
+└── supabase/functions/
+    └── ai-review/       серверная функция проверки наряда через Claude
 ```
 
 ## Тестовые данные
@@ -149,7 +169,7 @@ worko/
 
 | | |
 |---|---|
-| Учебное заведение | |
-| Город | |
-| Капитан | |
-| Участники | |
+| Учебное заведение | Университет имени Ш. Уалиханова |
+| Город | Кокшетау |
+| Капитан | Әділ |
+| Участники | Ержан, Әділ, Әбдірахман, Алдияр|
