@@ -261,10 +261,10 @@ var CODES=[{c:"Г-04",n:"течь гидравлики / смазки",norm:2},{
  {c:"Э-07",n:"обрыв цепи питания",norm:2},{c:"П-01",n:"пневмосистема",norm:3},{c:"С-03",n:"смазка узлов",norm:1}];
 var MATS=[{n:"Прокладка фланцевая 180 мм",u:"шт",norm:2},{n:"Масло И-40А",u:"л",norm:2},
  {n:"Подшипник 7312",u:"шт",norm:1},{n:"Кабель ВВГ 3х2.5",u:"м",norm:10},{n:"Манжета 50х70",u:"шт",norm:2}];
-var CREW=[{n:"Ким В.",s:"Электрик, 4 р.",r:4.8},{n:"Ахметов Е.",s:"Слесарь, 5 р.",r:4.0},
+var CREW=[{n:"Л. Месси",s:"Электрик, 4 р.",r:4.8},{n:"Ахметов Е.",s:"Слесарь, 5 р.",r:4.0},
  {n:"Нұрланов А.",s:"Слесарь, 6 р.",r:4.6},{n:"Жұмабеков Д.",s:"Сварщик, 5 р.",r:4.2},
  {n:"Петров С.",s:"Слесарь, 4 р.",r:3.6},{n:"Оспанов Р.",s:"Электрик, 5 р.",r:4.4}];
-var ME="Ким В.", MASTER="Сағынтаев Б.";
+var ME="Л. Месси", MASTER="К. Роналду";
 
 /* ───────── подключение к базе ───────── */
 var DB=null, REFS={sites:{},equip:{},emp:{},empByName:{},codes:{},mats:{}}, ONLINE=false;
@@ -490,7 +490,7 @@ function seed(){
 function genHistory(){
  var H=[],eqs=[];
  for(var k in EQUIP)for(var i=0;i<EQUIP[k].length;i++)eqs.push({e:EQUIP[k][i],s:k});
- var crew=["Ким В.","Ахметов Е.","Нұрланов А.","Жұмабеков Д.","Петров С.","Оспанов Р."];
+ var crew=["Л. Месси","Ахметов Е.","Нұрланов А.","Жұмабеков Д.","Петров С.","Оспанов Р."];
  var day=86400000,n=0;
  for(var d=90;d>=1;d--){
   var cnt=4+Math.floor(Math.random()*4);
@@ -592,8 +592,9 @@ function leftTxt(o){
  return neg?("−"+s):s;
 }
 function prioChip(p){
- if(p==="emerg")return '<span class="chip c-red">'+t("emerg").toUpperCase()+'</span>';
+ if(p==="emerg")return '<span class="chip c-red">'+(S.lang==="en"?"EMERGENCY":S.lang==="kk"?"АПАТТЫҚ":"АВАРИЙНЫЙ")+'</span>';
  if(p==="high")return '<span class="chip c-yel">'+(S.lang==="en"?"HIGH":S.lang==="kk"?"ЖОҒАРЫ":"ВЫСОКИЙ")+'</span>';
+ if(p==="low")return '<span class="chip c-grey">'+(S.lang==="en"?"ROUTINE":S.lang==="kk"?"ЖОСПАРЛЫ":"ПЛАНОВЫЙ")+'</span>';
  return '<span class="chip c-grey">'+(S.lang==="en"?"NORMAL":S.lang==="kk"?"ҚАЛЫПТЫ":"ОБЫЧНЫЙ")+'</span>';
 }
 function statusName(o){
@@ -920,6 +921,8 @@ function viewOrder(){
  else if(o.status==="paused")a='<button class="btn" data-a="resume" data-v="'+o.id+'">'+
   (S.lang==="en"?"Resume work":S.lang==="kk"?"Жалғастыру":"Возобновить работу")+'</button>';
  else if(o.status==="queued")a='<button class="btn" data-a="accept" data-v="'+o.id+'">'+t("accept")+'</button>';
+ else if(o.status==="check"&&S.role!=="master")a='<div class="muted" style="font-size:13px;font-weight:700;text-align:center;line-height:1.45">'+
+  (S.lang==="en"?"Waiting for the supervisor to confirm":S.lang==="kk"?"Шебердің растауын күтуде":"Ждём подтверждения мастера")+'</div>';
  if(S.role==="master"){
   a='';
   if(o.status==="check")a='<button class="btn" data-a="mclose" data-v="'+o.id+'">'+
@@ -1014,9 +1017,21 @@ function viewVerdict(){
   '<div class="row" style="font-size:14px;font-weight:700;margin-top:10px"><span class="grow muted">'+(S.lang==="en"?"Effect on rating":S.lang==="kk"?"Рейтингке әсері":"Влияние на рейтинг")+'</span>'+
   '<span>'+(v.score>=5?"+2":v.score>=4?"+1":"0")+' '+(S.lang==="en"?"pts":S.lang==="kk"?"ұпай":"балла")+'</span></div></div>';
  h+='</div>';
- h+='<div class="sticky-actions"><div class="inner"><div class="btn-row" style="margin:0">'+
-  '<button class="btn" data-a="closeorder" data-v="'+o.id+'">'+t("closeOrder")+'</button>'+
-  '<button class="btn sec" data-a="go" data-v="home">'+t("change")+'</button></div></div></div>';
+ if(S.role==="master"){
+  h+='<div class="sticky-actions"><div class="inner">'+
+   '<button class="btn" data-a="mclose" data-v="'+o.id+'">'+
+   (S.lang==="en"?"Accept and close":S.lang==="kk"?"Қабылдап жабу":"Принять и закрыть наряд")+'</button>'+
+   '<div class="btn-row"><button class="btn sec" data-a="mscore" data-v="'+o.id+'">'+t("change")+'</button>'+
+   '<button class="btn sec" data-a="mredo" data-v="'+o.id+'">'+
+   (S.lang==="en"?"Send back":S.lang==="kk"?"Пысықтауға":"На доработку")+'</button></div></div></div>';
+ }else{
+  h+='<div class="sticky-actions"><div class="inner">'+
+   '<div class="muted" style="font-size:12px;font-weight:700;text-align:center;margin-bottom:10px;line-height:1.45">'+
+   (S.lang==="en"?"Sent to the supervisor. He accepts the score or sends the order back."
+    :S.lang==="kk"?"Шеберге жіберілді. Ол бағаны қабылдайды немесе нарядты қайтарады."
+    :"Отправлено мастеру. Он примет оценку или вернёт наряд на доработку.")+'</div>'+
+   '<button class="btn" data-a="go" data-v="home">'+t("ok")+'</button></div></div>';
+ }
  return h;
 }
 function notifList(){
@@ -1178,10 +1193,14 @@ function askAI(q){
  }
  if(L.indexOf("смен")>=0||L.indexOf("отчёт")>=0||L.indexOf("отчет")>=0||L.indexOf("итог")>=0||L.indexOf("shift")>=0){
   var done=all.filter(function(o){return o.status==="closed"||o.status==="check";}).length;
+  if(!all.length)return "На смене пока нет нарядов. Выдайте первый — и я начну считать.";
+  var ss=0,sn=0;for(var zi=0;zi<all.length;zi++)if(all[zi].verdict){ss+=all[zi].verdict.score;sn++;}
   return "За смену выдано "+all.length+", закрыто "+done+", просрочено "+all.filter(isLate).length+
-   ". Средняя оценка качества 4.3. Полный отчёт — во вкладке «Отчёты».";
+   (sn?". Средняя оценка качества "+(ss/sn).toFixed(1):"")+". Полный отчёт — во вкладке «Отчёты».";
  }
  if(L.indexOf("лучш")>=0||L.indexOf("рейтинг")>=0||L.indexOf("best")>=0){
+  if(!cs.length)return "Рейтинг пока не посчитать — нет закрытых нарядов.";
+  if(cs.length===1)return "В рейтинге пока один исполнитель: "+cs[0].w+" — "+cs[0].score+" баллов, в срок "+cs[0].onTime+"%.";
   return "Лучший по рейтингу — "+cs[0].w+" ("+cs[0].score+" баллов, в срок "+cs[0].onTime+"%). "+
    "Слабее всех "+cs[cs.length-1].w+": доработок "+cs[cs.length-1].rework+"%.";
  }
@@ -1189,6 +1208,7 @@ function askAI(q){
   var byEq={};
   for(var h=0;h<S.hist.length;h++){var r=S.hist[h];if(r.p)continue;byEq[r.e]=(byEq[r.e]||0)+1;}
   var best=null,bn=0;for(var k in byEq)if(byEq[k]>bn){bn=byEq[k];best=k;}
+  if(!best)return "Истории пока мало — закономерности по оборудованию появятся, когда накопятся закрытые наряды.";
   return "Чаще всего ломается «"+best+"»: "+bn+" внеплановых за 90 дней. Рекомендую проверить причину, а не только следствие — подробности в разделе «Аналитика ИИ».";
  }
  if(L.indexOf("матери")>=0||L.indexOf("расход")>=0)
@@ -1245,19 +1265,22 @@ function viewShift(){
   (S.lang==="en"?"Shift report":S.lang==="kk"?"Ауысым есебі":"Отчёт за смену")+'</h1><span style="width:40px"></span></div>';
  h+='<div class="pad"><div class="muted" style="font-size:13px;font-weight:700">'+t("shift")+' · '+MASTER+'</div></div>';
  var k=[[t("kIssued"),all.length,""],[t("kDone"),done.length,"ok"],[t("kLate"),late.length,late.length?"red":""],
-  [t("kIdle"),(late.length*1.6+2).toFixed(1),""]];
+  [t("kIdle"),(all.filter(function(o){return o.status==="inprogress"||o.status==="paused";}).length*1.4).toFixed(1),""]];
  h+='<div class="kpis" style="margin-top:14px">';
  for(var i=0;i<k.length;i++)h+='<div class="kpi" style="'+(k[i][2]==="red"?"background:var(--danger-soft)":k[i][2]==="ok"?"background:var(--ok-soft)":"")+'">'+
   '<span class="muted" style="font-size:13px;font-weight:700">'+k[i][0]+'</span><b style="'+(k[i][2]==="red"?"color:var(--danger)":k[i][2]==="ok"?"color:var(--ok)":"")+'">'+k[i][1]+'</b></div>';
  h+='</div><div class="pad" style="padding-top:18px">';
  var lateEq=late.length?late[0].eq:"—", lateSite=late.length?late[0].site:"";
+ var sc=[],scSum=0;
+ for(var zi=0;zi<all.length;zi++)if(all[zi].verdict){sc.push(all[zi].verdict.score);scSum+=all[zi].verdict.score;}
+ var avgSc=sc.length?(scSum/sc.length).toFixed(1):"—";
  h+='<div class="card" style="background:var(--accent-soft)"><div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--accent-text)">'+
   (S.lang==="en"?"AI SUMMARY":S.lang==="kk"?"ЖИ ҚОРЫТЫНДЫСЫ":"СВОДКА ИИ")+'</div>'+
   '<div style="font-size:15px;font-weight:600;line-height:1.6;margin-top:8px;color:var(--accent-text)">'+
   (S.lang==="en"
-   ? "Issued "+all.length+", closed "+done.length+", overdue "+late.length+". The main delay is "+esc(lateEq)+". Average quality "+(4.3).toFixed(1)+". Recommend reviewing the minimum stock of bearings — the same cause came up twice this week."
+   ? "Issued "+all.length+", closed "+done.length+", overdue "+late.length+". Average quality "+avgSc+"."
    : S.lang==="kk"
-   ? "Берілді "+all.length+", жабылды "+done.length+", мерзімі өткен "+late.length+". Негізгі кідіріс — "+esc(lateEq)+". Орташа сапа "+(4.3).toFixed(1)+". Мойынтіректердің азаймайтын қорын қайта қарауды ұсынамын."
+   ? "Берілді "+all.length+", жабылды "+done.length+", мерзімі өткен "+late.length+". Орташа сапа "+avgSc+"."
    : "Выдано "+all.length+", закрыто "+done.length+", просрочено "+late.length+". Основная задержка — "+esc(lateEq)+(lateSite?", участок "+esc(lateSite).toLowerCase():"")+". Средняя оценка качества 4.3. Рекомендую пересмотреть неснижаемый запас подшипников: это вторая задержка по той же причине за неделю.")+'</div></div>';
  h+='<div class="sect">'+(S.lang==="en"?"CREW LOAD":S.lang==="kk"?"ЖҮКТЕМЕ":"ЗАГРУЗКА ЛЮДЕЙ")+'</div><div class="card">';
  for(var w=0;w<CREW.length;w++){var p=CREW[w].n;
@@ -1274,6 +1297,16 @@ function viewShift(){
 }
 function viewCrew(){
  var L=crewStats();
+ if(!L.length){
+  return '<div class="top"><button class="icon-btn" data-a="go" data-v="reports">'+back()+'</button><h1>'+
+   (S.lang==="en"?"Rating":S.lang==="kk"?"Рейтинг":"Рейтинг")+'</h1><span style="width:40px"></span></div>'+
+   '<div class="pad"><div class="card" style="text-align:center;padding:30px 18px">'+
+   '<div style="font-size:16px;font-weight:800">'+(S.lang==="en"?"No closed orders yet":S.lang==="kk"?"Жабылған наряд әлі жоқ":"Закрытых нарядов пока нет")+'</div>'+
+   '<div class="muted" style="font-size:14px;font-weight:600;margin-top:6px;line-height:1.5">'+
+   (S.lang==="en"?"The rating is calculated from completed work."
+    :S.lang==="kk"?"Рейтинг аяқталған жұмыс бойынша есептеледі."
+    :"Рейтинг считается по выполненным работам.")+'</div></div></div>'+tabbar("reports");
+ }
  var h='<div class="top"><button class="icon-btn" data-a="go" data-v="reports">'+back()+'</button><h1>'+
   (S.lang==="en"?"Rating":S.lang==="kk"?"Рейтинг":"Рейтинг")+'</h1><span style="width:40px"></span></div><div class="pad">';
  h+='<div class="muted" style="font-size:13px;font-weight:600;line-height:1.5;margin-bottom:14px">'+
@@ -1300,6 +1333,16 @@ function viewCrew(){
 }
 function viewAnalytics(){
  var H=S.hist||[];
+ if(H.length<5){
+  return '<div class="top"><button class="icon-btn" data-a="go" data-v="reports">'+back()+'</button><h1>'+
+   (S.lang==="en"?"AI analytics":S.lang==="kk"?"ЖИ талдауы":"Аналитика ИИ")+'</h1><span style="width:40px"></span></div>'+
+   '<div class="pad"><div class="card" style="text-align:center;padding:30px 18px">'+
+   '<div style="font-size:16px;font-weight:800">'+(S.lang==="en"?"Not enough history":S.lang==="kk"?"Тарих жеткіліксіз":"Недостаточно истории")+'</div>'+
+   '<div class="muted" style="font-size:14px;font-weight:600;margin-top:6px;line-height:1.5">'+
+   (S.lang==="en"?"AI looks for patterns across closed orders. Come back when there are more."
+    :S.lang==="kk"?"ЖИ жабылған нарядтардан заңдылық іздейді. Кейінірек оралыңыз."
+    :"ИИ ищет закономерности по закрытым нарядам. Вернитесь, когда их накопится больше.")+'</div></div></div>'+tabbar("reports");
+ }
  var byEq={},byPair={},oilNight=0,oilDay=0,oilNightN=0,oilDayN=0;
  for(var i=0;i<H.length;i++){var r=H[i];
   if(!byEq[r.e])byEq[r.e]={e:r.e,n:0,un:0,min:0};
@@ -1312,7 +1355,9 @@ function viewAnalytics(){
  var pairL=[];for(var pk in byPair)pairL.push({k:pk,n:byPair[pk]});
  pairL.sort(function(a,b){return b.n-a.n;});
  var p0=pairL[0]||{k:"—|—",n:0};
- var cs=crewStats(),worst=cs[cs.length-1];
+ var cs=crewStats();
+ var worst=cs.length?cs[cs.length-1]:{w:"—",rework:0};
+ var best=cs.length?cs[0]:{w:"—",rework:0};
  var nAvg=oilNightN?(oilNight/oilNightN):0,dAvg=oilDayN?(oilDay/oilDayN):0;
 
  var h='<div class="top"><button class="icon-btn" data-a="go" data-v="reports">'+back()+'</button><h1>'+
@@ -1365,9 +1410,9 @@ function viewAnalytics(){
    r:S.lang==="en"?"check the drive alignment and add the unit to the maintenance plan":S.lang==="kk"?"жетектің соосностін тексеріп, ЖЖЖ жоспарына қосу":"проверить соосность привода и включить узел в план ППР"},
   {c:"var(--accent-text)",bg:"var(--accent-soft)",
    t:S.lang==="en"?"Rework is concentrated on one technician":S.lang==="kk"?"Пысықтау бір орындаушыға шоғырланған":"Доработки сосредоточены на одном исполнителе",
-   b:(S.lang==="en"?worst.w+": "+worst.rework+"% of orders come back, against "+Math.round(cs[0].rework)+"% for the best in the shift."
-     :S.lang==="kk"?worst.w+": нарядтардың "+worst.rework+"%-ы қайтарылады, ауысымдағы ең жақсысында "+Math.round(cs[0].rework)+"%."
-     :worst.w+": возвращается "+worst.rework+"% нарядов против "+Math.round(cs[0].rework)+"% у лучшего в смене."),
+   b:(S.lang==="en"?worst.w+": "+worst.rework+"% of orders come back, against "+Math.round(best.rework)+"% for the best in the shift."
+     :S.lang==="kk"?worst.w+": нарядтардың "+worst.rework+"%-ы қайтарылады, ауысымдағы ең жақсысында "+Math.round(best.rework)+"%."
+     :worst.w+": возвращается "+worst.rework+"% нарядов против "+Math.round(best.rework)+"% у лучшего в смене."),
    r:S.lang==="en"?"review acceptance of work and the technician's qualification":S.lang==="kk"?"жұмысты қабылдауды және біліктілікті қарау":"проверить приёмку работ и квалификацию"},
   {c:"var(--ink)",bg:"var(--surface)",
    t:S.lang==="en"?"Oil consumption is higher on the night shift":S.lang==="kk"?"Түнгі ауысымда май шығыны жоғары":"Расход масла выше в ночную смену",
@@ -1559,21 +1604,29 @@ function viewDocs(){
 function viewRating(){
  var mine=S.orders.filter(function(o){return o.worker===ME;});
  var closed=mine.filter(function(o){return o.status==="closed"||o.status==="check";}).length;
+ var cs=crewStats(),me=null,place=0;
+ for(var mi=0;mi<cs.length;mi++)if(cs[mi].w===(S.me||ME)){me=cs[mi];place=mi+1;}
+ if(!me)me={score:0,avg:0,onTime:0,rework:0,n:closed};
  var P=[
-  {n:S.lang==="en"?"Quality score":S.lang==="kk"?"Сапа бағасы":"Оценка качества",v:"4.7",w:94,k:"40%"},
-  {n:S.lang==="en"?"Closed on time":S.lang==="kk"?"Мерзімінде жабылған":"Закрыто в срок",v:"96%",w:96,k:"30%"},
-  {n:S.lang==="en"?"No rework":S.lang==="kk"?"Пысықтаусыз":"Без доработок",v:"98%",w:98,k:"20%"},
-  {n:S.lang==="en"?"Volume of work":S.lang==="kk"?"Жұмыс көлемі":"Объём работ",v:closed+"",w:72,k:"10%"}
+  {n:S.lang==="en"?"Quality score":S.lang==="kk"?"Сапа бағасы":"Оценка качества",v:me.avg.toFixed(1),w:Math.round(me.avg/5*100),k:"40%"},
+  {n:S.lang==="en"?"Closed on time":S.lang==="kk"?"Мерзімінде жабылған":"Закрыто в срок",v:me.onTime+"%",w:me.onTime,k:"30%"},
+  {n:S.lang==="en"?"No rework":S.lang==="kk"?"Пысықтаусыз":"Без доработок",v:(100-me.rework)+"%",w:100-me.rework,k:"20%"},
+  {n:S.lang==="en"?"Volume of work":S.lang==="kk"?"Жұмыс көлемі":"Объём работ",v:me.n+"",w:Math.min(100,Math.round(me.n/120*100)),k:"10%"}
  ];
  var h='<div class="top"><button class="icon-btn" data-a="back3">'+back()+'</button><h1>'+t("rating")+'</h1><span style="width:40px"></span></div><div class="pad">';
  h+='<div class="card" style="text-align:center;background:var(--accent-soft)">'+
-  '<div style="font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--accent-text)">92</div>'+
+  '<div style="font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--accent-text)">'+me.score+'</div>'+
   '<div style="font-size:15px;font-weight:800;margin-top:6px;color:var(--accent-text)">'+
-  (S.lang==="en"?"1st place in the shift":S.lang==="kk"?"Ауысымда 1-орын":"1 место в смене")+'</div>'+
+  (place?((S.lang==="en"?place+" place in the shift":S.lang==="kk"?"Ауысымда "+place+"-орын":place+" место в смене"))
+   :(S.lang==="en"?"No data yet":S.lang==="kk"?"Дерек жоқ":"Данных пока нет"))+'</div>'+
   '<div style="font-size:13px;font-weight:600;margin-top:8px;color:var(--accent-text);line-height:1.5">'+
-  (S.lang==="en"?"AI: you close orders faster than the norm and almost never get rework. Volume is what holds the score back."
-   :S.lang==="kk"?"ЖИ: нарядтарды нормадан жылдам жабасыз, пысықтау дерлік жоқ. Балды тежеп тұрған — көлем."
-   :"ИИ: закрываете наряды быстрее норматива, доработок почти нет. Балл сдерживает объём работ.")+'</div></div>';
+  (me.n===0
+   ? (S.lang==="en"?"Close your first order and the rating will appear here."
+     :S.lang==="kk"?"Алғашқы нарядты жабыңыз, рейтинг осында шығады."
+     :"Закройте первый наряд, и рейтинг появится здесь.")
+   : (S.lang==="en"?"AI: on-time rate "+me.onTime+"%, rework "+me.rework+"%, average score "+me.avg.toFixed(1)+"."
+     :S.lang==="kk"?"ЖИ: мерзімінде "+me.onTime+"%, пысықтау "+me.rework+"%, орташа баға "+me.avg.toFixed(1)+"."
+     :"ИИ: в срок "+me.onTime+"%, доработок "+me.rework+"%, средняя оценка "+me.avg.toFixed(1)+"."))+'</div></div>';
  h+='<div class="sect">'+(S.lang==="en"?"HOW IT ADDS UP":S.lang==="kk"?"НЕДЕН ҚҰРАЛАДЫ":"ИЗ ЧЕГО СКЛАДЫВАЕТСЯ")+'</div>';
  for(var i=0;i<P.length;i++){var x=P[i];
   h+='<div class="card stag" style="animation-delay:'+i*45+'ms;padding:16px 18px">'+
@@ -1581,13 +1634,15 @@ function viewRating(){
    '<span class="muted" style="font-size:12px;font-weight:700;margin-right:10px">'+x.k+'</span><span>'+x.v+'</span></div>'+
    '<div style="height:8px;border-radius:999px;background:var(--surface2);margin-top:10px">'+
    '<div style="height:8px;border-radius:999px;width:'+x.w+'%;background:var(--accent)"></div></div></div>';}
- h+='<div class="card"><div class="label">'+(S.lang==="en"?"SUPERVISOR COMMENTS ON ORDERS":S.lang==="kk"?"НАРЯДТАР БОЙЫНША ШЕБЕР ПІКІРІ":"КОММЕНТАРИИ МАСТЕРА ПО НАРЯДАМ")+'</div>'+
-  '<div class="list-row"><div class="grow"><b style="font-size:14px;font-weight:800">№142</b>'+
-  '<div class="muted" style="font-size:13px;font-weight:600;margin-top:3px">'+
-  (S.lang==="en"?"Closed ahead of the norm, photos in order":S.lang==="kk"?"Нормадан бұрын жабылды, фото ретімен":"Закрыт раньше норматива, фото в порядке")+'</div></div><span class="chip c-ok">5</span></div>'+
-  '<div class="list-row"><div class="grow"><b style="font-size:14px;font-weight:800">№138</b>'+
-  '<div class="muted" style="font-size:13px;font-weight:600;margin-top:3px">'+
-  (S.lang==="en"?"After photo arrived late":S.lang==="kk"?"«Кейін» фото кеш түсті":"Фото «после» прислано с задержкой")+'</div></div><span class="chip c-yel">4</span></div></div>';
+ var cls2=S.orders.filter(function(o){return o.worker===(S.me||ME)&&(o.status==="closed"||o.status==="check")&&o.verdict;});
+ if(cls2.length){
+ h+='<div class="card"><div class="label">'+(S.lang==="en"?"RECENT VERDICTS":S.lang==="kk"?"СОҢҒЫ ШЕШІМДЕР":"ПОСЛЕДНИЕ ВЕРДИКТЫ ИИ")+'</div>'+
+  cls2.slice(0,4).map(function(o){
+   var sc=o.verdict.score,cl=sc>=5?"c-ok":sc>=3?"c-yel":"c-red";
+   return '<div class="list-row"><div class="grow"><b style="font-size:14px;font-weight:800">№'+o.num+'</b>'+
+    '<div class="muted" style="font-size:13px;font-weight:600;margin-top:3px;line-height:1.4">'+esc(o.verdict.text||o.verdict.title)+'</div></div>'+
+    '<span class="chip '+cl+'">'+sc+'</span></div>';}).join("")+'</div>';
+ }
  return h+'</div>'+tabbar("profile");
 }
 function viewSettings(){
@@ -1653,9 +1708,29 @@ function viewMaster(){
 }
 function viewNew(){
  var h='<div class="top"><button class="icon-btn" data-a="go" data-v="home">'+back()+'</button><h1>'+t("newOrder")+'</h1><span style="width:40px"></span></div><div class="pad">';
- h+='<div class="card"><div class="label">'+t("type").toUpperCase()+'</div><div class="seg" id="segprio">'+
-  '<button class="on" data-a="prio" data-v="emerg">'+t("emerg")+'</button>'+
-  '<button data-a="prio" data-v="normal">'+t("plan")+'</button></div></div>';
+ h+='<div class="card"><div class="label">'+t("type").toUpperCase()+'</div><div class="seg" id="segkind">'+
+  '<button class="'+(tmpKind==="unplanned"?"on":"")+'" data-a="kind" data-v="unplanned">'+
+   (S.lang==="en"?"Unplanned":S.lang==="kk"?"Жоспардан тыс":"Внеплановый")+'</button>'+
+  '<button class="'+(tmpKind==="planned"?"on":"")+'" data-a="kind" data-v="planned">'+t("plan")+'</button></div>'+
+  '<div class="label" style="margin:16px 0 10px">'+
+   (S.lang==="en"?"PRIORITY":S.lang==="kk"?"БАСЫМДЫҚ":"ПРИОРИТЕТ")+'</div>'+
+  '<div style="display:flex;flex-direction:column;gap:8px" id="segprio">';
+ var PRI=[
+  ["emerg",S.lang==="en"?"Emergency — start now":S.lang==="kk"?"Апаттық — дереу":"Аварийный — срочно в работу",
+   S.lang==="en"?"3 min to respond":S.lang==="kk"?"жауапқа 3 мин":"3 минуты на ответ"],
+  ["high",S.lang==="en"?"High":S.lang==="kk"?"Жоғары":"Высокий",
+   S.lang==="en"?"before the routine queue":S.lang==="kk"?"кезектен бұрын":"раньше обычной очереди"],
+  ["normal",S.lang==="en"?"Normal — in turn":S.lang==="kk"?"Қалыпты — кезекпен":"Обычный — в порядке очереди",""],
+  ["low",S.lang==="en"?"Routine":S.lang==="kk"?"Жоспарлы":"Плановый",
+   S.lang==="en"?"by maintenance schedule":S.lang==="kk"?"ЖЖЖ кестесі бойынша":"по графику ППР"]
+ ];
+ for(var pi=0;pi<PRI.length;pi++){var pr=PRI[pi],on=(tmpPrio===pr[0]);
+  h+='<button data-a="prio" data-v="'+pr[0]+'" style="display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:0 16px;border:none;border-radius:16px;cursor:pointer;text-align:left;background:'+
+   (on?"var(--accent)":"var(--surface2)")+';color:'+(on?"var(--accent-ink)":"var(--ink)")+'">'+
+   '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:'+(on?"800":"700")+'">'+pr[1]+'</span>'+
+   (pr[2]?'<span style="display:block;font-size:12px;font-weight:600;opacity:.7;margin-top:2px">'+pr[2]+'</span>':'')+'</span>'+
+   (on?'<span style="font-size:15px;font-weight:800">✓</span>':'')+'</button>';}
+ h+='</div></div>';
  h+='<div class="card"><div class="label">'+t("problem").toUpperCase()+'</div>'+
   '<textarea class="field" rows="2" id="nprob" placeholder="'+(S.lang==="en"?"Describe the fault":S.lang==="kk"?"Ақаулықты сипаттаңыз":"Опишите неисправность")+'"></textarea>'+
   '<button class="btn sec" style="min-height:46px;margin-top:10px;font-size:14px" data-a="voice" data-v="works">'+t("voice")+'</button></div>';
@@ -1826,7 +1901,19 @@ function render(){
  
  var app=document.getElementById("app");
  if(!document.getElementById("scr"))app.innerHTML='<div id="scr"></div><div id="nav"></div>';
- document.getElementById("scr").innerHTML='<div class="view">'+h+'</div>';
+
+ var sa="",si=h.indexOf('<div class="sticky-actions">');
+ if(si>=0){sa=h.slice(si);h=h.slice(0,si);}
+
+ var RANK={"":0,home:0,orders:1,cat:1,notif:1,profile:1,reports:1,
+  rating:2,history:2,docs:2,shift:2,crew:2,analytics:2,ask:2,order:2,scan:2,settings:2,new:2,filter:2,equip:2,
+  close:3,verdict:3,pause:3,reassign:3,score:3,login:1,pin:2};
+ var curRank=RANK[S.view]||0, prevRank=(S._rank==null?curRank:S._rank);
+ var dir=(curRank<prevRank)?"back":(curRank>prevRank?"fwd":"same");
+ S._rank=curRank;
+
+ var scr=document.getElementById("scr");
+ scr.innerHTML='<div class="view '+(dir==="back"?"vback":dir==="fwd"?"vfwd":"")+'">'+h+'</div>';
  var nav=document.getElementById("nav");
  var key=S.role?(S.role+"|"+S.lang):"";
  if(nav._key!==key){
@@ -1834,6 +1921,10 @@ function render(){
   var ob=nav.querySelector(".bar");if(ob)ob.remove();
   if(S.role)nav.insertAdjacentHTML("afterbegin",buildBar(activeTab()));
  }else if(S.role)syncBar(activeTab());
+
+ var osa=nav.querySelector(".sticky-actions");if(osa)osa.remove();
+ if(sa)nav.insertAdjacentHTML("afterbegin",sa);
+
  window.scrollTo(0,0);
  if(S.view==="scan"){setTimeout(startScan,60);}else{stopScan();}
 }
@@ -1893,6 +1984,7 @@ function paintLid(){
 }
 function toast(m){
  S.toast=m;
+ if(S._needRender){S._needRender=false;render();}
  var nav=document.getElementById("nav");
  if(!nav){render();return;}
  var old=nav.querySelector(".toast");if(old)old.remove();
@@ -1906,7 +1998,7 @@ function toast(m){
 }
 
 /* ---------- события ---------- */
-var tmpPrio="emerg",tmpDue=120;
+var tmpPrio="emerg",tmpDue=120,tmpKind="unplanned";
 document.addEventListener("click",function(e){
  var el=e.target.closest?e.target.closest("[data-a]"):null;
  if(!el)return;
@@ -1993,20 +2085,20 @@ document.addEventListener("click",function(e){
   if(o.status==="issued")o.acceptBy=nowMs()+(o.prio==="emerg"?3:10)*60000;
   logPush(o,"escalated",was+" → "+v);save();
   var ne=REFS.empByName[v];if(ne)dbPatch(o,{assignee_id:ne.id},"escalated",was+" → "+v);
-  S.view="order";
+  S.view="order";render();
   toast((S.lang==="en"?"Reassigned to ":S.lang==="kk"?"Қайта тағайындалды: ":"Переназначено: ")+v);return;}
  if(a==="mclose"){o=get(v);o.status="closed";logPush(o,"closed","");save();
-  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";
+  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";render();
   toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
  if(a==="mscore"){S.cur=v;S.view="score";render();return;}
  if(a==="setscore"){o=get(S.cur);if(o.verdict){o.verdict.score=parseInt(v,10);o.verdict.byMaster=true;}
-  logPush(o,"ai",(S.lang==="en"?"supervisor score ":S.lang==="kk"?"шебер бағасы ":"оценка мастера ")+v+"/5");save();S.view="order";
+  logPush(o,"ai",(S.lang==="en"?"supervisor score ":S.lang==="kk"?"шебер бағасы ":"оценка мастера ")+v+"/5");save();S.view="order";render();
   toast(S.lang==="en"?"Score updated":S.lang==="kk"?"Баға жаңартылды":"Оценка изменена");return;}
  if(a==="mredo"){o=get(v);o.status="inprogress";o.photo=(o.photos&&o.photos.length>0);
   dbPatch(o,{status:"rework"},"rework","");
   logPush(o,"paused",S.lang==="en"?"sent back for rework":S.lang==="kk"?"пысықтауға қайтарылды":"возвращён на доработку");
-  save();S.view="home";toast(S.lang==="en"?"Sent back for rework":S.lang==="kk"?"Пысықтауға қайтарылды":"Возвращено на доработку");return;}
- if(a==="mcancel"){o=get(v);var ix=S.orders.indexOf(o);if(ix>=0)S.orders.splice(ix,1);save();S.view="home";
+  save();S.view="home";render();toast(S.lang==="en"?"Sent back for rework":S.lang==="kk"?"Пысықтауға қайтарылды":"Возвращено на доработку");return;}
+ if(a==="mcancel"){o=get(v);var ix=S.orders.indexOf(o);if(ix>=0)S.orders.splice(ix,1);save();S.view="home";render();
   toast(S.lang==="en"?"Order cancelled":S.lang==="kk"?"Наряд жойылды":"Наряд отменён");return;}
  if(a==="pause"){S.cur=v;S.pauseOther=false;S.view="pause";render();return;}
  if(a==="pauseother"){S.pauseOther=!S.pauseOther;render();return;}
@@ -2015,20 +2107,20 @@ document.addEventListener("click",function(e){
   var txt=el?el.value.trim():"";
   if(txt.length<3){toast(S.lang==="en"?"Describe the reason":S.lang==="kk"?"Себепті жазыңыз":"Опишите причину");return;}
   o=get(S.cur);o.status="paused";o.pauseReason=txt;logPush(o,"paused",txt);save();
-  dbPatch(o,{status:"paused",pause_reason:txt},"paused",txt);S.pauseOther=false;S.view="order";
+  dbPatch(o,{status:"paused",pause_reason:txt},"paused",txt);S.pauseOther=false;S.view="order";render();
   toast(S.lang==="en"?"Supervisor notified":S.lang==="kk"?"Шебер хабардар етілді":"Мастер уведомлён");return;}
  if(a==="dopause"){o=get(S.cur);o.status="paused";o.pauseReason=v;logPush(o,"paused",v);save();
-  dbPatch(o,{status:"paused",pause_reason:v},"paused",v);S.view="order";
+  dbPatch(o,{status:"paused",pause_reason:v},"paused",v);S.view="order";render();
   toast(S.lang==="en"?"Supervisor notified":S.lang==="kk"?"Шебер хабардар етілді":"Мастер уведомлён");return;}
  if(a==="resume"){o=get(v);o.status="inprogress";o.pauseReason=null;logPush(o,"resumed","");save();
   dbPatch(o,{status:"inprogress",pause_reason:null},"resumed","");render();return;}
  if(a==="equip"){S.equip=v;S.view="equip";render();return;}
  if(a==="equipdirect"){stopScan();S.equip=v;S.cur=null;S.view="equip";render();return;}
  if(a==="accept"){o=get(v);o.status="accepted";o.acceptBy=null;logPush(o,"accepted","");save();
-  dbPatch(o,{status:"accepted",accept_by:null},"accepted","");toast(S.lang==="en"?"Accepted. Supervisor sees it now.":S.lang==="kk"?"Қабылданды. Шебер көріп тұр.":"Принято. Мастер видит статус.");return;}
+  dbPatch(o,{status:"accepted",accept_by:null},"accepted","");render();toast(S.lang==="en"?"Accepted. Supervisor sees it now.":S.lang==="kk"?"Қабылданды. Шебер көріп тұр.":"Принято. Мастер видит статус.");return;}
  if(a==="queue"){o=get(v);o.status="queued";o.acceptBy=null;logPush(o,"queued","");save();
-  dbPatch(o,{status:"queued",accept_by:null},"queued","");S.view="home";toast(S.lang==="en"?"Queued":S.lang==="kk"?"Кезекке қойылды":"Поставлено в очередь");return;}
- if(a==="reject"){o=get(v);var r=prompt(t("reason"));if(r){o.status="issued";o.worker="Ахметов Е.";o.acceptBy=nowMs()+(o.prio==="emerg"?3:10)*60000;logPush(o,"rejected",r);save();S.view="home";toast(S.lang==="en"?"Declined, AI offered another technician":S.lang==="kk"?"Бас тартылды, ЖИ басқа орындаушы ұсынды":"Отклонено, ИИ предложил другого исполнителя");}return;}
+  dbPatch(o,{status:"queued",accept_by:null},"queued","");S.view="home";render();toast(S.lang==="en"?"Queued":S.lang==="kk"?"Кезекке қойылды":"Поставлено в очередь");return;}
+ if(a==="reject"){o=get(v);var r=prompt(t("reason"));if(r){o.status="issued";o.worker="Ахметов Е.";o.acceptBy=nowMs()+(o.prio==="emerg"?3:10)*60000;logPush(o,"rejected",r);save();render();S.view="home";toast(S.lang==="en"?"Declined, AI offered another technician":S.lang==="kk"?"Бас тартылды, ЖИ басқа орындаушы ұсынды":"Отклонено, ИИ предложил другого исполнителя");}return;}
  if(a==="start"){o=get(v);o.status="inprogress";o.started=nowMs();logPush(o,"started","");save();
   dbPatch(o,{status:"inprogress",started_at:new Date().toISOString()},"started","");render();return;}
  if(a==="close"){S.cur=v;S.view="close";render();return;}
@@ -2062,11 +2154,12 @@ document.addEventListener("click",function(e){
   aiVerdictRemote(o).then(function(vd){fin(vd||aiVerdict(o));},function(){fin(aiVerdict(o));});
   return;}
  if(a==="closeorder"){o=get(v);o.status="closed";logPush(o,"closed","");save();
-  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
+  dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";render();toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
  if(a==="newphoto"){var nf=document.getElementById("newphotofile");if(nf)nf.click();return;}
  if(a==="delnewphoto"){S.newPhoto=null;render();return;}
  if(a==="eqother"){S.eqOther=!S.eqOther;render();return;}
- if(a==="prio"){tmpPrio=v;var b=document.querySelectorAll("#segprio button");for(var i=0;i<b.length;i++)b[i].className=(b[i].getAttribute("data-v")===v?"on":"");return;}
+ if(a==="prio"){tmpPrio=v;if(v==="low")tmpKind="planned";else if(tmpKind==="planned"&&v==="emerg")tmpKind="unplanned";render();return;}
+ if(a==="kind"){tmpKind=v;if(v==="planned"&&tmpPrio!=="low")tmpPrio="low";if(v==="unplanned"&&tmpPrio==="low")tmpPrio="normal";render();return;}
  if(a==="due"){tmpDue=parseInt(v,10);var d=document.querySelectorAll("#segdue button");for(var j=0;j<d.length;j++)d[j].className=(d[j].getAttribute("data-v")===v?"on":"");return;}
  if(a==="create"){
   var prob=document.getElementById("nprob").value.trim()||"Внеплановая остановка оборудования";
@@ -2081,7 +2174,7 @@ document.addEventListener("click",function(e){
     if(SITES.indexOf(site)<0)SITES.push(site);
    }}
   var n=mk(S.nextNum++,eq,site,prob,tmpPrio,w,tmpDue,"issued");
-  S.orders.unshift(n);save();S.view="home";
+  S.orders.unshift(n);save();S.view="home";render();
   if(ONLINE){
    var eqr=null;for(var qk in REFS.equip)if(REFS.equip[qk].name===eq)eqr=REFS.equip[qk];
    var wr=REFS.empByName[w];
@@ -2089,7 +2182,7 @@ document.addEventListener("click",function(e){
     if(mx.data&&mx.data[0]&&mx.data[0].num>=n.num){
      n.num=mx.data[0].num+1;S.nextNum=n.num+1;n.id="o"+n.num;save();
     }
-    return DB.from("orders").insert({num:n.num,kind:(tmpPrio==="emerg"?"unplanned":"planned"),
+    return DB.from("orders").insert({num:n.num,kind:tmpKind,
     priority:tmpPrio,problem:prob,
     site_id:eqr?eqr.site_id:null,equipment_id:eqr?eqr.id:null,
     assignee_id:wr?wr.id:null,master_id:S.empId,status:"issued",
