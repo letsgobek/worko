@@ -172,6 +172,15 @@ to{opacity:1;transform:none}}
 .dot4{width:16px;height:16px;border-radius:50%;background:var(--surface);transition:background .18s,transform .18s}
 .dot4.on{background:var(--accent);transform:scale(1.12)}
 .dot4.err{background:var(--danger)}
+.spin{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spn .7s linear infinite;vertical-align:-3px;margin-right:9px}
+@keyframes spn{to{transform:rotate(360deg)}}
+.dot4.wait{background:var(--accent);animation:wv 1s ease-in-out infinite}
+.dot4.wait:nth-child(2){animation-delay:.12s}
+.dot4.wait:nth-child(3){animation-delay:.24s}
+.dot4.wait:nth-child(4){animation-delay:.36s}
+@keyframes wv{0%,100%{transform:scale(1);opacity:.45}50%{transform:scale(1.25);opacity:1}}
+.dot4.ok{animation:okp .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes okp{0%{transform:scale(1)}55%{transform:scale(1.4)}100%{transform:scale(1.12)}}
 .dot4.pop{animation:pop .3s cubic-bezier(.2,1.4,.4,1)}
 @keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.35)}100%{transform:scale(1.12)}}
 .dot4.ok{background:var(--ok)}
@@ -365,8 +374,19 @@ async function dbEnrich(){
  (r[2].data||[]).forEach(function(e){var o=byId[e.order_id];if(!o)return;
   var emp=REFS.emp[e.actor_id]||{full_name:"—"};
   o.log.push({a:e.action,w:emp.full_name,ts:new Date(e.at).getTime(),c:e.comment||""});});
+ var need=[];
  (r[3].data||[]).forEach(function(ph){var o=byId[ph.order_id];if(!o)return;
-  if(ph.phase==="after"){o.photo=true;o.photos.push(ph.path);}});
+  need.push({o:o,ph:ph});});
+ for(var ni=0;ni<need.length;ni++){
+  var it=need[ni];
+  try{
+   var su=await DB.storage.from("order-photos").createSignedUrl(it.ph.path,3600);
+   var url=(su&&su.data&&su.data.signedUrl)?su.data.signedUrl:null;
+   if(!url)continue;
+   if(it.ph.phase==="after"){it.o.photo=true;it.o.photos.push(url);}
+   else it.o.photoBefore=url;
+  }catch(e){}
+ }
 }
 
 /* очередь действий: без сети копим, при появлении отправляем */
@@ -443,7 +463,7 @@ var ACC={worker:{name:ME,tab:"4417",pin:"1234",spec:"Электрик, 4 раз�
          master:{name:MASTER,tab:"1102",pin:"5678",spec:"Мастер смены · участок обогащения"}};
 
 var S={lang:"ru",theme:"system",role:null,view:"home",cur:null,filter:"all",site:"all",sort:"due",
- push:true,orders:null,nextNum:153,toast:null,avatar:null,verified:false,notifOk:false,doc:null,cat:"new",equip:null,pauseOther:false,eqOther:false,hist:[],mscore:null,chat:[],pendingRole:null,pin:"",pinErr:false,loginId:"",loginErr:false,pinOk:false,remember:true,busy:false};
+ push:true,orders:null,nextNum:153,toast:null,avatar:null,verified:false,notifOk:false,doc:null,cat:"new",equip:null,pauseOther:false,eqOther:false,hist:[],mscore:null,chat:[],pendingRole:null,pin:"",pinErr:false,loginId:"",loginErr:false,pinOk:false,remember:true,busy:false,newPhoto:null};
 
 function nowMs(){return Date.now();}
 function mk(num,eq,site,prob,prio,worker,dueMin,status){
@@ -711,7 +731,7 @@ function viewPin(){
  h+='<div id="pinmsg" class="muted" style="font-size:14px;font-weight:700;margin-top:-12px;margin-bottom:16px;color:'+(S.pinErr?"var(--danger)":"var(--muted)")+'">'+
   (S.pinErr?(S.lang==="en"?"Wrong PIN, try again":S.lang==="kk"?"ПИН дұрыс емес":"Неверный ПИН, попробуйте ещё раз")
    :(S.lang==="en"?"Enter your 4-digit PIN":S.lang==="kk"?"4 таңбалы ПИН енгізіңіз":"Введите 4-значный ПИН"))+'</div>';
- h+='<div class="keypad">';
+ h+='<div class="keypad" id="pinkeys" style="transition:opacity .2s'+(S.busy?";opacity:.4;pointer-events:none":"")+'">';
  for(var k=1;k<=9;k++)h+='<button class="key" data-a="pin" data-v="'+k+'">'+k+'</button>';
  h+='<button class="key alt" data-a="pinhint">?</button>';
  h+='<button class="key" data-a="pin" data-v="0">0</button>';
@@ -870,7 +890,9 @@ function viewOrder(){
   '<div class="row" style="font-size:14px;font-weight:700"><span class="grow muted">'+t("deadline")+'</span><span>'+(o.status==="closed"?t("closed"):leftTxt(o)+" "+t("left"))+'</span></div>'+
   '<div class="row" style="font-size:14px;font-weight:700;margin-top:10px"><span class="grow muted">'+t("master")+'</span><span>'+esc(o.master)+'</span></div>'+
   '<div class="row" style="font-size:14px;font-weight:700;margin-top:10px"><span class="grow muted">'+t("worker2")+'</span><span>'+esc(o.worker)+'</span></div></div>'+
-  '<div class="ph">'+(S.lang==="en"?"BEFORE PHOTO":S.lang==="kk"?"«ДЕЙІН» ФОТО":"ФОТО «ДО»")+'</div>';
+  (o.photoBefore
+  ? '<img src="'+o.photoBefore+'" alt="" style="width:100%;height:190px;object-fit:cover;border-radius:20px;display:block">'
+  : '<div class="ph">'+(S.lang==="en"?"BEFORE PHOTO":S.lang==="kk"?"«ДЕЙІН» ФОТО":"ФОТО «ДО»")+'</div>');
  if(o.status==="paused"&&o.pauseReason)
   h+='<div class="card" style="background:var(--accent-soft)"><div style="font-size:13px;font-weight:800;color:var(--accent-text)">'+
    (S.lang==="en"?"PAUSED":S.lang==="kk"?"ТОҚТАТЫЛҒАН":"ПРИОСТАНОВЛЕН")+'</div>'+
@@ -964,7 +986,9 @@ function verdictBlock(o){
  h+='</div>';
  var after=(o.photos&&o.photos.length)?'<img src="'+o.photos[0]+'" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:16px;display:block">'
   :'<div class="ph" style="background:var(--ok-soft);color:var(--ok)">'+(S.lang==="en"?"AFTER":S.lang==="kk"?"КЕЙІН":"ПОСЛЕ")+'</div>';
- h+='<div class="row" style="gap:10px;align-items:stretch"><div class="grow"><div class="ph">'+(S.lang==="en"?"BEFORE":S.lang==="kk"?"ДЕЙІН":"ДО")+'</div></div>'+
+ h+='<div class="row" style="gap:10px;align-items:stretch"><div class="grow">'+
+  (o.photoBefore?'<img src="'+o.photoBefore+'" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:16px;display:block">'
+   :'<div class="ph">'+(S.lang==="en"?"BEFORE":S.lang==="kk"?"ДЕЙІН":"ДО")+'</div>')+'</div>'+
   '<div class="grow">'+after+'</div></div>';
  return h;
 }
@@ -1654,6 +1678,18 @@ function viewNew(){
   '<button class="on" data-a="due" data-v="120">2 '+t("hrs")+'</button>'+
   '<button data-a="due" data-v="240">4 '+t("hrs")+'</button>'+
   '<button data-a="due" data-v="480">8 '+t("hrs")+'</button></div></div>';
+ h+='<div class="card"><div class="label">'+t("photo").toUpperCase()+' «'+(S.lang==="en"?"BEFORE":S.lang==="kk"?"ДЕЙІН":"ДО")+'»</div>'+
+  '<div class="row" style="gap:10px">'+
+  (S.newPhoto
+   ? '<div style="position:relative;flex:1 1 0"><img src="'+S.newPhoto+'" alt="" style="width:100%;height:104px;object-fit:cover;border-radius:16px;display:block">'+
+     '<button class="cam" style="right:4px;bottom:4px;width:26px;height:26px;background:var(--danger);color:#fff;border-color:var(--surface)" data-a="delnewphoto">✕</button></div>'
+   : '<div class="ph grow" style="height:104px">'+(S.lang==="en"?"No photo":S.lang==="kk"?"Фото жоқ":"Фото нет")+'</div>')+
+  '<button class="btn" style="width:110px;height:104px;min-height:104px;flex:0 0 110px" data-a="newphoto">'+t("shoot")+'</button>'+
+  '<input type="file" id="newphotofile" accept="image/*" capture="environment" style="display:none"></div>'+
+  '<div class="muted" style="font-size:12px;font-weight:600;line-height:1.5;margin-top:10px">'+
+  (S.lang==="en"?"AI compares this photo with the one taken after the repair."
+   :S.lang==="kk"?"ЖИ бұл фотоны жөндеуден кейінгі фотомен салыстырады."
+   :"ИИ сравнит этот снимок с фото после ремонта.")+'</div></div>';
  h+='</div><div class="sticky-actions"><div class="inner"><button class="btn" data-a="create">'+t("issue")+'</button></div></div>';
  return h;
 }
@@ -1824,16 +1860,28 @@ function paintPin(){
  var c=document.getElementById("pindots");if(!c)return render();
  var pin=S.pin||"",html="";
  for(var i=0;i<4;i++){
-  var cls=S.pinErr?"err":(S.pinOk?"on ok":(i<pin.length?"on":""));
-  if(!S.pinErr&&!S.pinOk&&i===pin.length-1)cls+=" pop";
+  var cls=S.pinErr?"err":(S.pinOk?"on ok":(S.busy?"wait":(i<pin.length?"on":"")));
+  if(!S.pinErr&&!S.pinOk&&!S.busy&&i===pin.length-1)cls+=" pop";
   html+='<span class="dot4 '+cls+'"></span>';}
  c.innerHTML=html;
  c.className="dots";if(S.pinErr){void c.offsetWidth;c.className="dots shake";}
+ var kp=document.getElementById("pinkeys");
+ if(kp){kp.style.opacity=(S.busy||S.pinOk)?"0.4":"1";kp.style.pointerEvents=(S.busy||S.pinOk)?"none":"auto";}
  var m=document.getElementById("pinmsg");
- if(m){m.textContent=S.pinErr
-  ?(S.lang==="en"?"Wrong PIN, try again":S.lang==="kk"?"ПИН дұрыс емес":"Неверный ПИН, попробуйте ещё раз")
-  :(S.lang==="en"?"Enter your 4-digit PIN":S.lang==="kk"?"4 таңбалы ПИН енгізіңіз":"Введите 4-значный ПИН");
-  m.style.color=S.pinErr?"var(--danger)":"var(--muted)";}
+ if(m){
+  if(S.busy){
+   m.innerHTML='<span class="spin"></span>'+(S.lang==="en"?"Checking…":S.lang==="kk"?"Тексерілуде…":"Проверяем…");
+   m.style.color="var(--muted)";
+  }else if(S.pinOk){
+   m.textContent=(S.lang==="en"?"Signed in":S.lang==="kk"?"Авторизация сәтті":"Авторизация пройдена");
+   m.style.color="var(--ok)";
+  }else if(S.pinErr){
+   m.textContent=(S.lang==="en"?"Wrong PIN, try again":S.lang==="kk"?"ПИН дұрыс емес":"Неверный ПИН, попробуйте ещё раз");
+   m.style.color="var(--danger)";
+  }else{
+   m.textContent=(S.lang==="en"?"Enter your 4-digit PIN":S.lang==="kk"?"4 таңбалы ПИН енгізіңіз":"Введите 4-значный ПИН");
+   m.style.color="var(--muted)";
+  }}
 }
 function paintLid(){
  var e=document.getElementById("lidval");if(!e)return render();
@@ -1909,7 +1957,7 @@ document.addEventListener("click",function(e){
         toast((S.lang==="en"?"Welcome, ":S.lang==="kk"?"Қош келдіңіз, ":"Добро пожаловать, ")+emp2.full_name);
         dbSubscribe();
        }).catch(function(){render();});
-      },420);
+      },900);
      },function(){
       S.busy=false;S.pin="";S.pinErr=true;paintPin();
       toast(S.lang==="en"?"Connection problem, try again":S.lang==="kk"?"Байланыс қатесі, қайталаңыз":"Проблема со связью, попробуйте ещё раз");
@@ -2015,6 +2063,8 @@ document.addEventListener("click",function(e){
   return;}
  if(a==="closeorder"){o=get(v);o.status="closed";logPush(o,"closed","");save();
   dbPatch(o,{status:"closed",finished_at:new Date().toISOString()},"closed","");dbReloadSoon();S.view="home";toast(S.lang==="en"?"Order closed":S.lang==="kk"?"Наряд жабылды":"Наряд закрыт");return;}
+ if(a==="newphoto"){var nf=document.getElementById("newphotofile");if(nf)nf.click();return;}
+ if(a==="delnewphoto"){S.newPhoto=null;render();return;}
  if(a==="eqother"){S.eqOther=!S.eqOther;render();return;}
  if(a==="prio"){tmpPrio=v;var b=document.querySelectorAll("#segprio button");for(var i=0;i<b.length;i++)b[i].className=(b[i].getAttribute("data-v")===v?"on":"");return;}
  if(a==="due"){tmpDue=parseInt(v,10);var d=document.querySelectorAll("#segdue button");for(var j=0;j<d.length;j++)d[j].className=(d[j].getAttribute("data-v")===v?"on":"");return;}
@@ -2046,7 +2096,21 @@ document.addEventListener("click",function(e){
     due_at:new Date(n.due).toISOString(),
     accept_by:new Date(n.acceptBy).toISOString()}).select();
    }).then(function(res){
-    if(res&&res.data&&res.data[0]){n.dbid=res.data[0].id;dbEvent(n,"created","");render();}
+    if(res&&res.data&&res.data[0]){
+     n.dbid=res.data[0].id;dbEvent(n,"created","");
+     if(S.newPhoto){
+      try{
+       var bin=atob(S.newPhoto.split(",")[1]),arr=new Uint8Array(bin.length);
+       for(var bi=0;bi<bin.length;bi++)arr[bi]=bin.charCodeAt(bi);
+       var path=n.dbid+"/before-"+Date.now()+".jpg";
+       DB.storage.from("order-photos").upload(path,new Blob([arr],{type:"image/jpeg"}))
+        .then(function(){DB.from("order_photos").insert({order_id:n.dbid,phase:"before",
+          path:path,author_id:S.empId}).then(function(){dbReloadSoon();},function(){});},function(){});
+      }catch(err){}
+      S.newPhoto=null;
+     }
+     render();
+    }
     else if(res&&res.error){toast("Не удалось сохранить наряд: "+res.error.message);}
    },function(e){toast("Не удалось сохранить наряд");});
   }
@@ -2083,6 +2147,12 @@ function shrink(file,cb){
  fr.readAsDataURL(file);
 }
 document.addEventListener("change",function(e){
+ if(e.target.id==="newphotofile"&&e.target.files&&e.target.files[0]){
+  shrink(e.target.files[0],function(d){
+   if(!d){toast("Ошибка фото");return;}
+   S.newPhoto=d;render();
+   toast(S.lang==="en"?"Photo attached":S.lang==="kk"?"Фото тіркелді":"Фото прикреплено");});
+  return;}
  if(e.target.id==="photofile"&&e.target.files&&e.target.files[0]){
   var o=get(S.cur);syncClose(o);
   shrink(e.target.files[0],function(d){
