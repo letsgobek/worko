@@ -1,0 +1,4 @@
+window.WORKO_CONFIG = {
+  SUPABASE_URL: 'https://ldjpzjscxothrgmdnlnl.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkanB6anNjeG90aHJnbWRubG5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzODcyODUsImV4cCI6MjEwNjk2MzI4NX0.Pr2MarzSKLl5PXTc2MMfaM2YAXFfqQlio5h9vE_AX78'
+};
